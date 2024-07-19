@@ -1,0 +1,234 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chess App</title>
+<link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+<style>
+body {
+font-family: Arial, sans-serif;
+margin: 0;
+padding: 0;
+}
+
+.container {
+display: flex;
+justify-content: center;
+align-items: center;
+height: 100vh;
+}
+
+.board {
+width: 500px;
+height: 500px;
+border: 1px solid black;
+display: grid;
+grid-template-columns: repeat(8, 50px);
+grid-template-rows: repeat(8, 50px);
+}
+
+.square {
+width: 50px;
+height: 50px;
+border: 1px solid black;
+}
+
+.white {
+background-color: white;
+}
+
+.black {
+background-color: black;
+}
+
+.piece {
+width: 50px;
+height: 50px;
+display: flex;
+justify-content: center;
+align-items: center;
+font-size: 30px;
+}
+
+#controls {
+margin-left: 20px;
+}
+
+#status {
+font-size: 20px;
+margin-bottom: 20px;
+}
+
+.btn {
+margin-right: 10px;
+}
+</style>
+</head>
+<body>
+<div class="container">
+<div class="board"></div>
+<div id="controls">
+<div id="status"></div>
+<button class="btn btn-primary" id="reset-btn">Reset</button>
+</div>
+</div>
+
+<script>
+let board = {{ board | tojson }};
+let turn = '{{ turn }}';
+let selectedSquare = null;
+
+const createBoard = () => {
+const boardElement = document.querySelector('.board');
+
+for (let i = 0; i < 8; i++) {
+for (let j = 0; j < 8; j++) {
+const square = document.createElement('div');
+square.classList.add('square');
+square.style.backgroundColor = (i + j) % 2 === 0 ? 'white' : 'black';
+square.addEventListener('click', () => handleSquareClick(square, i, j));
+boardElement.appendChild(square);
+}
+}
+};
+
+const handleSquareClick = (square, row, col) => {
+if (selectedSquare) {
+const piece = selectedSquare.querySelector('.piece');
+
+if (piece) {
+const startRow = selectedSquare.getAttribute('data-row');
+const startCol = selectedSquare.getAttribute('data-col');
+const endRow = square.getAttribute('data-row');
+const endCol = square.getAttribute('data-col');
+const data = {
+start,
+startCol,
+end,
+endCol,
+};
+
+fetch('/move', {
+method: 'POST',
+headers: {
+'Content-Type': 'application/json',
+},
+body: JSON.stringify(data),
+})
+.then(res => res.json())
+.then(data => {
+if (data.error) {
+alert(data.error);
+} else {
+board = data.board;
+turn = data.turn;
+updateBoard();
+checkCheckmate();
+}
+})
+.catch(err => {
+console.error(err);
+alert('Error: Could not move piece');
+});
+}
+
+selectedSquare = null;
+square.classList.remove('selected');
+} else {
+const piece = square.querySelector('.piece');
+
+if (piece && piece.classList.contains(turn)) {
+selectedSquare = square;
+square.classList.add('selected');
+}
+}
+};
+
+const updateBoard = () => {
+const squares = document.querySelectorAll('.square');
+
+for (let i = 0; i < 8; i++) {
+for (let j = 0; j < 8; j++) {
+const square = squares[i * 8 + j];
+const piece = square.querySelector('.piece');
+
+if (piece) {
+piece.remove();
+}
+
+const newPiece = document.createElement('div');
+newPiece.classList.add('piece');
+newPiece.classList.add(board[i][j]);
+square.appendChild(newPiece);
+}
+}
+};
+
+const checkCheckmate = () => {
+const data = {
+kingRow: {{ king_row }},
+kingCol: {{ king_col }},
+};
+
+fetch('/check', {
+method: 'POST',
+headers: {
+'Content-Type': 'application/json',
+},
+body: JSON.stringify(data),
+})
+.then(res => res.json())
+.then(data => {
+if (data.in_check) {
+alert('Check!');
+} else {
+alert('Checkmate!');
+}
+})
+.catch(err => {
+console.error(err);
+alert('Error: Could not check for checkmate');
+});
+};
+
+const resetBoard = () => {
+fetch('/reset', {
+method: 'POST',
+headers: {
+'Content-Type': 'application/json',
+},
+})
+.then(res => res.json())
+.then(data => {
+board = data.board;
+turn = data.turn;
+updateBoard();
+})
+.catch(err => {
+console.error(err);
+alert('Error: Could not reset board');
+});
+};
+
+const updateStatus = () => {
+const statusElement = document.getElementById('status');
+statusElement.textContent = `It is ${turn}'s turn`;
+};
+
+window.onload = () => {
+createBoard();
+updateBoard();
+updateStatus();
+
+const resetButton = document.getElementById('reset-btn');
+resetButton.addEventListener('click', resetBoard);
+};
+</script>
+</body>
+</html>
+
